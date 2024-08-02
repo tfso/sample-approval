@@ -1,0 +1,1165 @@
+openapi: 3.0.1
+info:
+  title: Voucher Api
+  version: 1.0.0
+  description: |-
+    Handles posting of vouchers.
+
+paths:
+  /vouchers:
+    get:
+      tags:
+        - Vouchers    
+      summary: Get vouchers.
+      security:
+        - OAuth2:
+          - retrieval
+          - approval
+          - approval.viewall
+          - approval.viewrejected
+          - accounting.registration
+          - accounting.searchvoucher
+          - accounting.reportgeneralledger
+      description: Retrieves vouchers based on the provided filters. 
+      operationId: GetVouchers
+      parameters:
+        - name: search
+          in: query
+          description: Filter model for searching vouchers. It is a serialized object in string type. To be used as a querystring parameter, it must be encoded. For example [{"Model":{"Statuses":{"Retrieval":"Pending"}}}] must be encoded to %5B%7B%22Model%22%3A%7B%22Statuses%22%3A%7B%22Retrieval%22%3A%22Pending%22%7D%7D%7D%5D and used as search query param
+          schema:
+            type: string
+            $ref: '#/components/schemas/SearchModel'
+          required: false
+        - name: fileKey
+          in: query
+          description: File key used for filtering vouchers
+          schema:
+            type: string
+          required: false
+        - name: documentId
+          in: query
+          description: Document ID used for filtering vouchers
+          schema:
+            type: integer
+          required: false
+        - name: pageSize
+          in: query
+          description: Number of vouchers to include per page
+          schema:
+            type: integer
+            format: int16
+          required: false
+        - name: paginationToken
+          in: query
+          description: Token for retrieving the next page of results
+          schema:
+            type: string
+          required: false
+        - name: ocrFullText
+          in: query
+          description: Full-text search criteria based on OCR content
+          schema:
+            type: string
+          required: false
+        - name: accept
+          in: header
+          description: Accept header specifying the response format (e.g., application/pdf)
+          schema:
+            type: string
+          required: false
+        - name: Authorization
+          in: header
+          description: Access token for authorization
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseModel'
+        '302':
+          description: Found
+          headers:
+            Location:
+              schema:
+                type: string
+              description: Redirect URL for document download
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel'
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorModel' 
+  /vouchers/{id}:
+    get:
+      tags:
+        - Vouchers    
+      summary: Get a voucher by ID
+      operationId: GetVoucher
+      security:
+        - OAuth2:
+          - retrieval
+          - approval
+          - approval.viewall
+          - approval.viewrejected
+          - accounting.registration
+          - accounting.searchvoucher 
+          - accounting.reportgeneralledger
+      parameters:
+        - name: id
+          in: path
+          description: ID of the voucher to retrieve
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: accept
+          in: header
+          description: Accept header specifying the response format (e.g., application/json, application/pdf)
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Voucher retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoucherDto'
+            application/pdf:
+              schema:
+                type: object
+                properties:
+                  downloadUrl:
+                    type: string
+        '403':
+          description: Forbidden (Access Denied)
+        '404':
+          description: Voucher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    patch:
+      tags:
+        - Vouchers    
+      summary: Update a voucher by ID
+      security:
+        - OAuth2:
+          - retrieval
+          - approval.editvoucher
+      operationId: SaveVoucher
+      parameters:
+        - name: id
+          in: path
+          description: ID of the voucher to update
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoucherDto'
+      responses:
+        '200':
+          description: Voucher updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoucherDto'
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden (Access Denied)
+        '404':
+          description: Voucher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - Vouchers    
+      summary: Delete a voucher
+      security:
+        - OAuth2:
+          - retrieval
+          - approval.delete
+      operationId: DeleteVoucher
+      parameters:
+        - name: id
+          in: path
+          description: ID of the voucher to delete
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Voucher deleted successfully
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Voucher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /vouchers/{id}/events:
+    get:
+      tags:
+        - Vouchers/Events    
+      summary: Get events by voucher ID
+      security:
+        - OAuth2:
+          - retrieval
+          - approval
+          - approval.viewall
+          - approval.viewrejected
+          - accounting.registration
+          - accounting.searchvoucher 
+          - accounting.reportgeneralledger
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK    
+  /vouchers/{id}/logs:
+    get:
+      tags:
+        - Vouchers/Logs 
+      summary: Get logs by voucher ID
+      security:
+        - OAuth2:
+          - retrieval
+          - approval
+          - approval.viewall
+          - approval.viewrejected
+          - accounting.registration
+          - accounting.searchvoucher 
+          - accounting.reportgeneralledger
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /vouchers/{id}/pages:
+    get:
+      tags:
+        - Vouchers/Pages
+      summary: Get pages by voucher ID
+      security:
+        - OAuth2:
+          - retrieval
+          - approval
+          - approval.viewall
+          - approval.viewrejected
+          - accounting.registration
+          - accounting.searchvoucher 
+          - accounting.reportgeneralledger
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+    put:
+      tags:
+        - Vouchers/Pages
+      summary: Replace pages of a voucher
+      security:
+        - OAuth2:
+          - retrieval
+          - approval.editvoucher
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/PageDto'
+      responses:
+        '200':
+          description: OK
+  /vouchers/{voucherId}/pages/{pageKey}:
+    delete:
+      tags:
+        - Vouchers/Pages
+      summary: Delete pages on a voucher by pagekey
+      security: 
+        - OAuth2:
+          - retrieval
+          - approval.delete
+      parameters:
+        - name: voucherId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: pageKey
+          in: path
+          required: true
+          description: url encoded pagekey
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: No-Content
+  /vouchers/{id}/transactions:
+    get:
+      tags:
+        - Vouchers/Transactions
+      summary: Get transactions by voucher ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: User does not have required scopes to perform this action
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Voucher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /vouchers/{id}/approvers:
+    get:
+      tags:
+        - Vouchers/Approvers
+      summary: Get approvers by voucher ID
+      security: 
+        - OAuth2:
+          - organization
+          - approval.list
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Approvers retrieved successfully
+          content:
+            application/json:              
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApproverDto'
+        '403':
+          description: Forbidden (Access Denied)
+    put:
+      tags:
+        - Vouchers/Approvers
+      summary: Add, remove, replace approvers in voucher. 
+      description: this endpoint cannot be used to change status. Even if you send a different status in payload, the status will not be changed for existing approvers, and the new one will always get Awaiting status. If you send an empty list, the approvers will be cleared of this voucher. If you use the id of an existing approver in payload, it will be updated. If you do not enter the id in the payload, a new approver will be created
+      security: 
+        - OAuth2:
+          - organization
+          - approval.listadd
+          - approval.listmove
+          - approval.listdelete
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: guid
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ApproverDto'
+      responses:
+        '200':
+          description: Approvers retrieved successfully
+          content:
+            application/json:              
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApproverDto'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden (Access Denied)
+        '404': 
+          description: voucher not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /vouchers/{id}/approvers/{approver_id}:
+    patch:
+      tags:
+        - Vouchers/Approvers
+      summary: update approver by voucher ID and approver id
+      description: with this endpoint you will edit a single approver, especialy you will change its status
+      security: 
+        - OAuth2:
+          - organization
+          - approval.approve
+          - approval.reject
+          - approval.forward
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: approver_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproverDto'
+      responses:
+        '200':
+          description: Approvers retrieved successfully
+          content:
+            application/json:              
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApproverDto'
+        '403':
+          description: Forbidden (Access Denied)
+        '404': 
+          description: voucher or approver not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /pages/{pageKey}:
+    get:
+      tags:
+        - Pages
+      summary: Get page image by page key
+      parameters:
+        - name: pageKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+  /files:
+    post:
+      tags:
+        - Files
+      summary: Create a new file
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FileDto'
+      responses:
+        '201':
+          description: Created
+  /files/{fileKey}:
+    get:
+      tags:
+        - Files
+      summary: Get file information by file key
+      parameters:
+        - name: fileKey
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
+
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://example.com/oauth/authorize
+          tokenUrl: https://example.com/oauth/token
+          scopes:
+            organization: Grants organization
+            retrieval: Grants retrival
+            approval: View - Voucherlist - Awaiting approval tab (main, My vouchers) - Rejected tab (My vouchers)
+            approval.viewall: View - Voucherlist - Awaiting approval tab - All vouchers
+            approval.viewrejected: View - Voucherlist - Rejected tab - All vouchers
+            approval.list: View - Processor - Approval section with people list
+            approval.listadd: Add - Processor - Approval section with people list
+            approval.listmove: Edit/move - Processor - Approval section with people list
+            approval.listdelete: Delete - Processor - Approval section with people list
+            approval.approve: Actions - Approve - Processor - Approval mode 
+            approval.reject: Decline / reject - Approve - Processor - Approval mode 
+            approval.forward: Forward - Approve - Processor - Approval mode 
+            approval.delete: Delete - Approve - Processor - Approval mode 
+            approval.editvoucher: Edit voucher info - Processor - Approval mode - Voucher info
+            accounting.registration: View - Get all vouchers that are sent to advanced posting
+            accounting.searchvoucher: View - Get all vouchers that are posted
+            accounting.reportgeneralledger: View - Get all vouchers that are posted
+  schemas:
+    SearchModel:
+      type: object
+      required:
+        - Model
+      properties:
+        Model:
+          $ref: '#/components/schemas/VoucherDto'
+        Operator: 
+          type: string
+          enum:
+            - Equal
+            - GreaterThan
+            - LessThan
+            - GreaterEqual
+            - LessEqual
+            - Contains
+          default: Equal
+          
+      example:
+        - 
+          Model: 
+            Statuses: 
+              Retrieval: "Pending"
+          Operator: "Equal"
+
+    ErrorModel:
+      type: object
+      properties:
+        error:
+           $ref: '#/components/schemas/Error'
+        trackingId:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        message: 
+          type: string
+        name: 
+          type: string
+        payload:
+          type: object
+      
+    ResponseModel:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/VoucherDto'
+            
+    VoucherDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        numbers:
+          type: array
+          items:
+            type: integer
+        documentId:
+          type: integer
+        source:
+          $ref: '#/components/schemas/SourceDto'
+        references:
+          type: object
+          additionalProperties:
+            type: string
+        statuses:
+          $ref: '#/components/schemas/StatusesDto'
+        postingType:
+          $ref: '#/components/schemas/PostingType'
+        accountingParty:
+          $ref: '#/components/schemas/AccountingPartyDto'
+        received:
+          type: string
+          format: date-time
+        timestamp:
+          type: string
+          format: date-time
+        amount:
+          type: number
+        invoiceNumber:
+          type: string
+        payment:
+          $ref: '#/components/schemas/PaymentDto'
+        comment:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionDto'
+        transactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionDto'
+        currency:
+          $ref: '#/components/schemas/CurrencyDto'
+        date:
+          type: string
+          format: date
+        periodDate:
+          type: string
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PageDto'
+        voucherTypeNo:
+          type: integer
+        pageCount:
+          type: integer
+      additionalProperties: false
+      example:
+        id: "3bc22672-4d00-4855-857b-04b84a63afd6"
+        numbers: [50110]
+        documentId: 2586
+        source:
+          application:
+            id: "INGoYuDZDgaxT8JOL64M7vnJcxEGxCi0"
+            name: null
+          identity:
+            id: "e2996785-01da-4f3a-93c0-8d65f896addd"
+            name: "Wiktor Adamow"
+        references:
+          PostingVoucherId: "88b6fe3f-27a2-4d92-831e-0ec290419809"
+          LegacyFileId: "3405127"
+        statuses:
+          retrieval: Completed
+          approval: Approved
+          analysis: NotStarted
+          posting: Posted
+          bank: Paid
+        postingType: PostDirectlyToGeneralLedger
+        accountingParty:
+          id: 123
+          name: "24SevenOffice Norway AS"
+        received: "2023-06-23T10:00:00Z"
+        timestamp: "2023-06-23T10:00:00Z"
+        amount: 100.0
+        invoiceNumber: "216045645500"
+        payment:
+          id: "42820365481291158"
+          dueDate: "2023-06-30"
+          accounts:
+            - type: "1234"
+              number: "1234 56 78901"
+              bsc: "bsc"
+              address: "Street 1"
+        comment: "Example comment"
+        tags: ["tag1", "tag2"]
+        dimensions:
+          - type: 1
+            value: "2"
+            name: "AHHH"
+          - type: 103
+            value: "WHT"
+            name: "Hvit"
+        transactions:
+          - id: "69412860-6cb8-4cba-94b6-8cc0894afcd5"
+            sequenceId: 1.0
+            accountNo: 1240
+            vatCode: 51
+            amount: -8929.81
+            currency:
+              symbol: "USD"
+              rate: 1.0
+        currency:
+          symbol: "USD"
+          rate: 1.0
+        date: "2023-06-23"
+        periodDate: "2023-06-01"
+        pages:
+          - sequenceNumber: 1
+            voucherId: "3bc22672-4d00-4855-857b-04b84a63afd6"
+            previewUrl: "https://vouchers.x.com/preview/"
+            thumbUrl: "https://vouchers.x.com/thumbnail"
+            metaData:
+              key1: "value1"
+              key2: "value2"
+            key: "Page 1"
+            ocrMetadata: "OCR metadata"
+        voucherTypeNo: 1
+        pageCount: 1
+
+    SourceDto:
+      type: object
+      properties:
+        application:
+          $ref: '#/components/schemas/ApplicationDto'
+        identity:
+          $ref: '#/components/schemas/IdentityDto'
+
+    ApplicationDto:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174000"
+        name: "Application 1"
+
+    IdentityDto:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174001"
+        name: "Identity 1"
+
+    StatusesDto:
+      type: object
+      properties:
+        retrieval:
+          type: string
+          enum:
+            - Pending
+            - Processing
+            - Completed
+            - Failed
+        approval:
+          type: string
+          enum:
+            - Pending
+            - Processing
+            - Approved
+            - Completed
+            - Failed
+        analysis:
+          type: string
+          enum:
+            - NotStarted
+            - Pending
+            - Processing
+            - Completed
+            - Failed
+        posting:
+          type: string
+          enum:
+            - Pending
+            - Processing
+            - Posted
+            - Completed
+            - Failed
+        bank:
+          type: string
+          enum:
+            - Pending
+            - Proposal
+            - Due
+            - Processing
+            - Paid
+            - Posted
+            - Failed
+      example:
+        retrieval: Completed
+        approval: Approved
+        analysis: NotStarted
+        posting: Posted
+        bank: Paid
+
+    PostingType:
+      type: string
+      enum:
+        - PostDirectlyToGeneralLedger
+        - PrepostingWithDocumentId
+
+    AccountingPartyDto:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      example:
+        id: 123
+        name: "Accounting Party 1"
+
+    PaymentDto:
+      type: object
+      properties:
+        id:
+          type: string
+        dueDate:
+          type: string
+          format: date
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountDto'
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174002"
+        dueDate: "2023-06-30"
+        accounts:
+          - # AccountDto object
+            # ...
+
+    AccountDto:
+      type: object
+      properties:
+        type:
+          type: string
+        number:
+          type: string
+        bsc:
+          type: string
+        address:
+         type: string
+      example:
+        type: "ABC123"
+        number: "1234 56 78901"
+        bsc: "bsc"
+        address: "Street 1"
+
+    DimensionDto:
+      type: object
+      properties:
+        type:
+          type: integer
+        value:
+          type: string
+        name:
+          type: string
+      example:
+        type: 1
+        value: "Dimension Value"
+        name: "Dimension Name"
+
+    TransactionDto:
+      type: object
+      properties:
+        id:
+          type: string
+        sequenceId:
+          type: number
+        accountNo:
+          type: integer
+        vatCode:
+          type: integer
+        amount:
+          type: number
+        currency:
+          $ref: '#/components/schemas/CurrencyDto'
+      example:
+        id: "123e4567-e89b-12d3-a456-426614174003"
+        sequenceId: 1.0
+        accountNo: 123
+        vatCode: 456
+        amount: 100.0
+        currency:
+          # CurrencyDto object
+          # ...
+
+    CurrencyDto:
+      type: object
+      properties:
+        symbol:
+          type: string
+        rate:
+          type: number
+      example:
+        symbol: "USD"
+        rate: 1.0
+
+    PageDto:
+      type: object
+      properties:
+        sequenceNumber:
+          type: integer
+        voucherId:
+          type: string
+          format: uuid
+        previewUrl:
+          type: string
+        thumbUrl:
+          type: string
+        metaData:
+          type: object
+          additionalProperties:
+            type: string
+        key:
+          type: string
+        ocrMetadata:
+          type: string
+      example:
+        sequenceNumber: 1
+        voucherId: "123e4567-e89b-12d3-a456-426614174004"
+        previewUrl: "https://vouchers.x.com/preview"
+        thumbUrl: "https://vouchers.x.com/thumbnail"
+        metaData:
+          key1: "value1"
+          key2: "value2"
+        key: "Page 1"
+        ocrMetadata: "OCR metadata"
+
+    ApproverDto:
+      type: object
+      properties:
+        id:
+          type: string
+        sequenceNumber:
+          type: integer
+        typer:
+          type: string
+          enum:
+            - Person
+            - AtLeastOne
+            - All
+        typeParameters:
+          type: object
+          additionalProperties:
+            type: string
+        identifier:
+          type: string
+        status:
+          type: string
+          enum:
+            - Awaiting
+            - Pending
+            - Approved
+            - Declined
+            - Forwarded
+        comment:
+          type: string
+        friendlyName:
+          type: string
+        approvers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApproverDto'
+      example:
+        id: "approver_id"
+        sequenceNumber: 1
+        typeParameters: "{\"flowType\": \"Sequential\"}"
+        identifier: "f5f297f3-38a9-4242-9c8a-9d3d80a0dcf5"
+        friendlyName: "Epic Dude"
+        status: "Awaiting"
+        type: "Person"               
+
+    Destination:
+      type: string
+      enum:
+        - Retrieval
+        - Approval
+        - Preposting
+
+    FileDto:
+      type: object
+      properties:
+        fileKey:
+          type: string
+        created:
+          type: string
+          format: date-time
+        status:
+          type: string
+        statusMessage:
+          type: string
+        destination:
+          $ref: '#/components/schemas/Destination'
+        useAutoAssignedDocumentId:
+          type: boolean
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilePage'
+        fileContentType:
+          type: string
+      example:
+        fileKey: "example-file-key"
+        created: "2023-06-23T10:00:00Z"
+        status: "Example status"
+        statusMessage: "Example status message"
+        destination: Retrieval
+        useAutoAssignedDocumentId: true
+        pages:
+          - number: 1
+            metaData:
+              Type: invoice
+              TransportMethod: email
+              DocumentFormat: pdf
+              InvoiceDate: '2022-11-09'
+              InvoiceDueDate: '2022-12-15'
+              InvoiceNo: '100586'
+              InvoiceOCR: ''
+              Amount: '20048.29'
+              CurrencySymbol: NOK
+              InvoiceBankAccountType: BBAN
+              InvoiceBankAccountNo: '99998855555'
+              IBAN: AT483200000012345864
+              FullText: 'Fulltext OCR data'
+        fileContentType: "application/pdf"
+
+    FilePage:
+      type: object
+      properties:
+        number:
+          type: number
+          example: 1
+          description: Pagenumber used to map metadata to a specific page within the uploaded document.
+        metadata:
+          type: object
+          description: User-defined metadata. The fields mentioned in the example are existing values on todays vouchers, which will be used with the voucher. But you are free to define keys per your needs.
+          example:
+            Type: invoice
+            TransportMethod: email
+            DocumentFormat: pdf
+            InvoiceDate: '2022-11-09'
+            InvoiceDueDate: '2022-12-15'
+            InvoiceNo: '100586'
+            InvoiceOCR: ''
+            Amount: '20048.29'
+            CurrencySymbol: NOK
+            InvoiceBankAccountType: BBAN
+            InvoiceBankAccountNo: '99998855555'
+            IBAN: AT483200000012345864
+            FullText: 'Fulltext OCR data'
