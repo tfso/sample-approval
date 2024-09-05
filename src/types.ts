@@ -1,10 +1,12 @@
 export type Identity = {
     clientId: number
-    profileId: string
+    profileId?: string
 }
 
-export type Auth = {
-    token: string
+export type JWTToken = {
+    access_token: string
+    expires_at: string
+    scope: string
 }
 
 export type Voucher = {
