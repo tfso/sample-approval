@@ -11,7 +11,7 @@ describe('token', () => {
     }
 
     it('should fetch a fresh token', async () => {
-        const token = await fetchToken(clients['Test Client'])
+        const token = await fetchToken(clients['Test Client'], 'https://api.24sevenoffice.com')
         expect(token).toBeDefined()
         expectTypeOf(token.expires_at).toBeString
         expectTypeOf(token.access_token).toBeString
@@ -19,8 +19,8 @@ describe('token', () => {
     })
 
     it('should fetch a cached token', async () => {
-        const token1 = await getAccessToken(clients['Test Client'])
-        const token2 = await getAccessToken(clients['Test Client'])
+        const token1 = await getAccessToken(clients['Test Client'], 'https://api.24sevenoffice.com')
+        const token2 = await getAccessToken(clients['Test Client'], 'https://api.24sevenoffice.com')
         expect(token1).toEqual(token2)
     })
 })

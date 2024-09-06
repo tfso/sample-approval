@@ -2,8 +2,8 @@ import 'dotenv/config'
 import { describe, it, expect, expectTypeOf } from 'vitest'
 import { changeStatus, getVouchersForApproval, handleVoucher } from '../src/approval'
 import { Voucher } from '../src/types'
-import { fetchToken, getAccessToken } from '../src/token'
-
+import { getAPIToken, getApprovalToken } from '../src/token'
+import { getPeople } from '../src/api'
 
 describe('approval', () => {
     // insert your token here
@@ -20,11 +20,6 @@ describe('approval', () => {
     }
 
 
-    const auth = { token: token }
-    async function getAuth() {
-        return fetchToken(clients['Test Client'])
-
-    }
     function expectVoucherToBeValid(voucher: Voucher) {
         expect(voucher).toHaveProperty('id')
         expect(voucher).toHaveProperty('numbers')
@@ -116,7 +111,7 @@ describe('approval', () => {
 
     it('should list all vouchers for approval', async () => {
         const clientId = clients['Test Client']
-        const token = await getAccessToken(clientId)
+        const token = await getApprovalToken(clientId)
         const vouchersForApprovalResult = await getVouchersForApproval({ token, id: { clientId } })
         expectTypeOf(vouchersForApprovalResult).toBeArray()
         vouchersForApprovalResult.forEach(v => expectVoucherToBeValid(v))
@@ -125,7 +120,7 @@ describe('approval', () => {
     it('should approve a voucher with comment', async () => {
         const clientId = clients['Test Client']
         const profileId = profiles['Test Profile']
-        const token = await getAccessToken(clientId)
+        const token = await getApprovalToken(clientId)
         const vouchersForApprovalResult = await getVouchersForApproval({ token, id: { clientId, profileId } })
         const voucherToApprove = vouchersForApprovalResult[0]
         const ownApprover = voucherToApprove.approvers.find(approver => approver.identifier === profileId)
@@ -144,7 +139,7 @@ describe('approval', () => {
     it('should reject a voucher with comment', async () => {
         const clientId = clients['Test Client']
         const profileId = profiles['Test Profile']
-        const token = await getAccessToken(clientId)
+        const token = await getApprovalToken(clientId)
         const vouchersForApprovalResult = await getVouchersForApproval({ token, id: { clientId, profileId } })
         const voucherToApprove = vouchersForApprovalResult[0]
         const ownApprover = voucherToApprove.approvers.find(approver => approver.identifier === profileId)
@@ -163,7 +158,7 @@ describe('approval', () => {
     it('should just change status without touching approver', async () => {
         const clientId = clients['Test Client']
         //const profileId = profiles['Test Profile']
-        const token = await getAccessToken(clientId)
+        const token = await getApprovalToken(clientId)
         const vouchersForApprovalResult = await getVouchersForApproval({ token, id: { clientId } })
         const voucherId = vouchersForApprovalResult[0].id
         //const voucherId = 'c3bbec68-86a7-4e31-81b7-58490de49425'
@@ -173,5 +168,11 @@ describe('approval', () => {
             voucherId,
             status: 'Completed'
         })
+    })
+
+    it('should get all people in the organization', async () => {
+        const token = await getAPIToken(clients['Test Client'])
+        const people = await getPeople({ id: { clientId: clients['Test Client'] }, token })
+        expectTypeOf(people).toBeArray
     })
 })

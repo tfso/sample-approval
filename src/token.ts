@@ -2,10 +2,10 @@ import { writeFile, readFile } from 'fs/promises'
 import { JWTToken } from './types'
 
 
-export async function fetchToken(organizationClientId: number): Promise<JWTToken> {
+export async function fetchToken(organizationClientId: number, audience: string): Promise<JWTToken> {
     const client_secret = process.env.APPLICATION_CLIENT_SECRET
     const client_id = process.env.APPLICATION_CLIENT_ID
-    const audience = 'https://accounting.24sevenoffice.com'
+    //const audience = 'https://accounting.24sevenoffice.com'
     //const audience = 'https://api.24sevenoffice.com'
     const params = {
         grant_type: 'client_credentials',
@@ -33,8 +33,8 @@ export async function fetchToken(organizationClientId: number): Promise<JWTToken
     }
 }
 
-export async function getAccessToken(organizationClientId: number): Promise<JWTToken> {
-    const cacheFile = `token-${organizationClientId}.cache`
+export async function getAccessToken(organizationClientId: number, audience: string): Promise<JWTToken> {
+    const cacheFile = `token-${organizationClientId}-${audience.split('//')[1]}.cache`
     try {
         const token = JSON.parse(await readFile(cacheFile, 'utf-8')) as JWTToken
         if (new Date(token.expires_at) > new Date()) {
@@ -42,9 +42,16 @@ export async function getAccessToken(organizationClientId: number): Promise<JWTT
         }
         throw new Error('Token not found or expired')
     } catch (error) {
-        const token = await fetchToken(organizationClientId)
+        const token = await fetchToken(organizationClientId, audience)
         await writeFile(cacheFile, JSON.stringify(token), 'utf-8')
         return token
     }
+}
 
+export async function getApprovalToken(organizationClientId: number): Promise<JWTToken> {
+    return getAccessToken(organizationClientId, 'https://accounting.24sevenoffice.com')
+}
+
+export async function getAPIToken(organizationClientId: number): Promise<JWTToken> {
+    return getAccessToken(organizationClientId, 'https://api.24sevenoffice.com')
 }

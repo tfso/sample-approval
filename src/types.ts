@@ -90,4 +90,14 @@ export type Approver = {
     approvers: Approver[]
 }
 
+export type Person = {
+    id: number
+    identityId: string
+    firstName: string
+    lastName: string
+    personType: string
+    hasLicense: boolean
+}
+
 export type ApproverStatus = 'Awaiting' | 'Pending' | 'Approved' | 'Declined' | 'Forwarded'
+
